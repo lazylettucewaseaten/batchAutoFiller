@@ -5,9 +5,11 @@ writes long free-text answers ("Why do you want to join?", "Describe a project")
 dictionary can't answer is asked once in the terminal and saved back into dictionary.json.
 
 Setup (once):
-  1. Put OPENROUTER_API_KEY=... in .env (free key from openrouter.ai).
-  2. Fill the "a": null entries in dictionary.json you already know (or answer them when asked).
-  3. First run opens a dedicated Chrome profile (~/.autofill-chrome); log in to job sites there once.
+  1. cp .env.example .env and put your OpenRouter key in it (free key from openrouter.ai).
+  2. cp dictionary.example.json dictionary.json, replace the placeholders with your details,
+     and fill the "a": null entries you already know (or answer them when asked).
+  3. Put your resume next to this file and set its filename as "resume" in config.json.
+  4. First run opens a dedicated Chrome profile (~/.autofill-chrome); log in to job sites there once.
 
 Run:
   python3 autofill.py                 # every link in links.txt not already submitted/skipped
@@ -457,6 +459,8 @@ def run_link(browser_ctx, url, ctx):
 
 
 def load_context():
+    if not DICTIONARY.exists():
+        sys.exit("dictionary.json missing: cp dictionary.example.json dictionary.json and fill in your details")
     config = json.loads((HERE / "config.json").read_text())
     resume_path = HERE / config["resume"]
     resume = ""

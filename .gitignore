@@ -2,3 +2,6 @@
 *.pdf
 applications.csv
 __pycache__/
+
+# personal data: copy dictionary.example.json to dictionary.json and fill it in
+dictionary.json

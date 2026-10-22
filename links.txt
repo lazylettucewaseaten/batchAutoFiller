@@ -1,2 +1,2 @@
 # one job application URL per line; lines starting with # are ignored
-
+https://jobs.lever.co/vendavo/88828341-f39e-4749-b93f-816110f76298/apply

@@ -22,6 +22,7 @@ Requires Python 3.10+, Google Chrome and `pdftotext` (`sudo apt install poppler-
 
 ```bash
 pip install playwright
+python3 -m playwright install chromium     # only needed for test_autofill.py
 cp .env.example .env                        # add your free key from https://openrouter.ai
 cp config.example.json config.json          # set "resume" to your resume file name
 cp dictionary.example.json dictionary.json  # replace placeholders with your details

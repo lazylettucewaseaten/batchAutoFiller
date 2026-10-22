@@ -5,3 +5,4 @@ __pycache__/
 
 # personal data: copy dictionary.example.json to dictionary.json and fill it in
 dictionary.json
+config.json

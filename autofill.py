@@ -8,7 +8,7 @@ Setup (once):
   1. cp .env.example .env and put your OpenRouter key in it (free key from openrouter.ai).
   2. cp dictionary.example.json dictionary.json, replace the placeholders with your details,
      and fill the "a": null entries you already know (or answer them when asked).
-  3. Put your resume next to this file and set its filename as "resume" in config.json.
+  3. cp config.example.json config.json, put your resume next to this file and set its filename as "resume".
   4. First run opens a dedicated Chrome profile (~/.autofill-chrome); log in to job sites there once.
 
 Run:
@@ -466,8 +466,9 @@ def redact(text):
 
 
 def load_context():
-    if not DICTIONARY.exists():
-        sys.exit("dictionary.json missing: cp dictionary.example.json dictionary.json and fill in your details")
+    for name in ("dictionary", "config"):
+        if not (HERE / f"{name}.json").exists():
+            sys.exit(f"{name}.json missing: cp {name}.example.json {name}.json and fill in your details")
     config = json.loads((HERE / "config.json").read_text())
     resume_path = HERE / config["resume"]
     resume = ""

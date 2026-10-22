@@ -1,0 +1,9 @@
+{
+  "models": [
+    "minimax/minimax-m3.1-flash:free",
+    "nvidia/nemotron-3.5-super-vl:free",
+    "poolside/laguna-s-2.1:free",
+    "google/gemma-4-31b-it:free"
+  ],
+  "resume": "resume.pdf"
+}

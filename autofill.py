@@ -458,6 +458,13 @@ def run_link(browser_ctx, url, ctx):
             return title, status, "; ".join(problems)
 
 
+def redact(text):
+    """Strip email, phone numbers and profile links before resume text leaves the machine."""
+    text = re.sub(r"\S+@\S+\.\S+", "", text)
+    text = re.sub(r"https?://\S+|(www\.)?(linkedin|github|gitlab|leetcode|codeforces|codechef|atcoder|twitter|x)\.(com|jp|in)\S*", "", text)
+    return re.sub(r"\+?\d[\d\s-]{8,}\d", "", text)  # 10+ digit runs: phone numbers
+
+
 def load_context():
     if not DICTIONARY.exists():
         sys.exit("dictionary.json missing: cp dictionary.example.json dictionary.json and fill in your details")
@@ -465,7 +472,7 @@ def load_context():
     resume_path = HERE / config["resume"]
     resume = ""
     if resume_path.exists():
-        resume = subprocess.run(["pdftotext", "-layout", str(resume_path), "-"], capture_output=True, text=True).stdout
+        resume = redact(subprocess.run(["pdftotext", "-layout", str(resume_path), "-"], capture_output=True, text=True).stdout)
     else:
         print(f"warning: resume not found at {resume_path}; uploads and AI answers disabled")
     return SimpleNamespace(

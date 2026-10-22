@@ -83,4 +83,6 @@ with tempfile.NamedTemporaryFile(suffix=".pdf") as resume, sync_playwright() as 
     assert yn("Are you familiar with React.js or Vue?") == "Yes"
     assert yn("Do you have experience building software in AWS (with Terraform)?") == "No"
     assert yn("Do you have 5+ years of experience with Python?") is None
+    clean = autofill.redact("+91 9876543210  # me@mail.com  linkedin.com/in/x/ https://github.com/y 1.3M+ ops, 2023 – 2027, 100K+")
+    assert not any(x in clean for x in ("9876543210", "@", "linkedin", "github")) and "1.3M+" in clean and "2023 – 2027" in clean, clean
 print("ok")

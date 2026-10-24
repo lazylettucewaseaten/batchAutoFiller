@@ -85,4 +85,14 @@ with tempfile.NamedTemporaryFile(suffix=".pdf") as resume, sync_playwright() as 
     assert yn("Do you have 5+ years of experience with Python?") is None
     clean = autofill.redact("+91 9876543210  # me@mail.com  linkedin.com/in/x/ https://github.com/y 1.3M+ ops, 2023 – 2027, 100K+")
     assert not any(x in clean for x in ("9876543210", "@", "linkedin", "github")) and "1.3M+" in clean and "2023 – 2027" in clean, clean
+    # learning: what you answer (or skip) in the terminal is saved and reused without asking
+    base = dict(kind="text", value="", options=[], name="", placeholder="", autocomplete="")
+    color = dict(base, id="a", question="Favourite colour", required=True)
+    robots = dict(base, id="b", question="Nickname for robots", required=False)
+    learn = SimpleNamespace(dictionary=[], resume_words=set(), resume_path=autofill.Path("/nonexistent"))
+    autofill.ask_user = lambda f: {"Favourite colour": "Blue"}.get(f["question"])
+    assert autofill.decide([color, robots], learn) == {"a": "Blue"}
+    autofill.ask_user = lambda f: (_ for _ in ()).throw(AssertionError(f"asked again: {f['question']}"))
+    assert autofill.decide([color, robots], learn) == {"a": "Blue"}
+    assert len(autofill.json.loads(autofill.DICTIONARY.read_text())) == 2
 print("ok")

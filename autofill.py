@@ -19,7 +19,6 @@ Run:
 import argparse
 import csv
 import datetime
-import difflib
 import json
 import re
 import subprocess
@@ -64,9 +63,10 @@ def norm(s):
     return re.sub(r"[^a-z0-9+]+", " ", str(s).lower()).strip()
 
 
-def pick(options, value, fuzzy=True):
+def pick(options, value):
     """Best option for value: exact, then whole-word prefix ("Yes" ~ "Yes, I am authorized"),
-    then all words contained ("decline" ~ "I decline to self-identify"), then fuzzy."""
+    then all words contained ("decline" ~ "I decline to self-identify"). No fuzzy spelling match:
+    it picked "IIT Delhi" for "IIT Bhilai"; a miss falls through to the next alternative ("Others") or to you."""
     v, names = norm(value), [norm(o) for o in options]
     if not v:
         return None
@@ -78,8 +78,7 @@ def pick(options, value, fuzzy=True):
     for o, n in zip(options, names):
         if set(v.split()) <= set(n.split()):
             return o
-    close = difflib.get_close_matches(v, names, 1, 0.75) if fuzzy else []
-    return options[names.index(close[0])] if close else None
+    return None
 
 
 def truthy(v):
@@ -108,14 +107,14 @@ def resolve(f, answer):
     if kind == "checkbox":
         return truthy(alts[0])
     if kind == "checkbox_group":
-        chosen = [o for o in (pick(options, a, fuzzy=False) for a in alts) if o]
+        chosen = [o for o in (pick(options, a) for a in alts) if o]
         return list(dict.fromkeys(chosen)) or None
     if kind == "combobox" and (f.get("typeable") or not options):
         # searchable dropdown: the peeked list may be partial, so type and let the site search
-        hit = next((o for o in (pick(options, a, fuzzy=False) for a in alts) if o), None)
+        hit = next((o for o in (pick(options, a) for a in alts) if o), None)
         return [hit] if hit else [str(a) for a in alts]
-    if options:  # every alternative strictly first, so "Other" beats a fuzzy near-miss like "IIT Mandi"
-        return next((o for fuzzy in (False, True) for o in (pick(options, a, fuzzy) for a in alts) if o), None)
+    if options:
+        return next((o for o in (pick(options, a) for a in alts) if o), None)
     if f.get("input_type") == "number":
         return next((str(a) for a in alts if re.fullmatch(r"[\d.]+", str(a))), None)
     if kind == "date":
@@ -134,11 +133,16 @@ def skill_answer(f, resume_words):
 
 
 def save_answer(ctx, f, value):
-    """Store your terminal answer as an exact-question entry, ahead of the general entries."""
+    """Store your terminal answer as an exact-question entry, ahead of the general entries, so it's reused next time."""
     q = norm(f["question"])
     if q:
-        ctx.dictionary.insert(0, {"q": "^" + re.escape(q) + "$", "a": value})
-        DICTIONARY.write_text(json.dumps(ctx.dictionary, indent=2, ensure_ascii=False))
+        entry = {"q": "^" + re.escape(q) + "$", "a": value}
+        ctx.dictionary.insert(0, entry)
+        # re-read the file: it may have been edited since this run started, and those edits must survive
+        on_disk = json.loads(DICTIONARY.read_text()) if DICTIONARY.exists() else []
+        on_disk.insert(0, entry)
+        DICTIONARY.write_text("[\n" + ",\n".join("  " + json.dumps(e, ensure_ascii=False) for e in on_disk) + "\n]\n")
+        print("     saved to dictionary.json" + (" (won't ask again)" if value == "" else ""))
 
 
 def file_for(f, ctx):
@@ -156,7 +160,8 @@ def ask_user(f):
     for i, o in enumerate(opts, 1):
         print(f"       {i}. {o}")
     hint = "y/n" if f["kind"] == "checkbox" else "numbers, comma separated" if f["kind"] == "checkbox_group" else "number or text" if opts else "answer"
-    raw = input(f"     your {hint} (Enter = leave empty): ").strip()
+    later = "ask again next time" if f["required"] else "never ask again"
+    raw = input(f"     your {hint} (Enter = leave empty, {later}): ").strip()
     if not raw:
         return None
     if f["kind"] == "checkbox":
@@ -184,7 +189,7 @@ def write_with_ai(todo, ctx):
     rows = data.get("answers", [data] if "id" in data else [])
     if isinstance(rows, dict):  # some models reply {"<id>": text}
         rows = [{"id": k, "value": v} for k, v in rows.items()]
-    out = {str(a.get("id")): str(a.get("value")) for a in rows if isinstance(a, dict) and a.get("value") not in (None, "", "SKIP")}
+    out = {str(a.get("id")): str(a.get("value")) for a in rows if isinstance(a, dict) and str(a.get("value") or "").strip().lower() not in ("", "skip")}
     print(f"   AI ({model}) wrote {len(out)}/{len(todo)} answers")
     return out
 
@@ -214,8 +219,8 @@ def decide(fields, ctx):
             plan[f["id"]] = value
         elif f["kind"] in ("text", "editable") and (f.get("input_type") == "textarea" or FREE_TEXT.search(norm(f["question"]))):
             writing.append(f)
-        elif matches or f["required"]:
-            asking.append(f)  # unknown optional fields are left alone
+        elif f["required"] or norm(f["question"]):
+            asking.append(f)  # unlabeled optional fields can't be learned, so they're left alone
     if writing:
         plan.update(write_with_ai(writing, ctx))
     for f in asking:
@@ -223,6 +228,8 @@ def decide(fields, ctx):
         if value is not None:
             plan[f["id"]] = value
             save_answer(ctx, f, value)
+        elif not f["required"]:
+            save_answer(ctx, f, "")  # optional question you skipped: stay quiet about it from now on
     return plan
 
 
@@ -318,7 +325,7 @@ def fill_combobox(frame, loc, f, value):
     except Exception:
         pass
     texts = [t.strip() for t in options.all_inner_texts()]
-    choice = pick(texts, value, fuzzy=False)
+    choice = pick(texts, value)
     if choice is None and texts and place:
         choice = texts[0]  # ponytail: place search takes the top suggestion; check location fields before submitting
     if choice is None:

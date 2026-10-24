@@ -22,10 +22,11 @@ def _key():
 
 def parse_json(text):
     """Pull the JSON object out of a reply, ignoring ``` fences or chatter around it."""
-    start, end = text.find("{"), text.rfind("}")
-    if start < 0 or end < start:
+    start = text.find("{")
+    if start < 0:
         raise ValueError("no JSON object in reply")
-    return json.loads(text[start:end + 1])
+    # raw_decode ignores trailing text; strict=False allows raw newlines inside answers
+    return json.JSONDecoder(strict=False).raw_decode(text[start:])[0]
 
 
 def chat(models, system, user):
@@ -46,7 +47,7 @@ def chat(models, system, user):
             headers={"Authorization": "Bearer " + _key(), "Content-Type": "application/json", "X-Title": "job-autofill"},
         )
         try:
-            with urllib.request.urlopen(req, timeout=120) as r:
+            with urllib.request.urlopen(req, timeout=180) as r:
                 resp = json.load(r)
             if "error" in resp:
                 raise ValueError(resp["error"].get("message", resp["error"]))

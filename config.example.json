@@ -1,9 +1,9 @@
 {
   "models": [
-    "minimax/minimax-m3.1-flash:free",
-    "nvidia/nemotron-3.5-super-vl:free",
+    "nvidia/nemotron-3-ultra-550b-a55b:free",
     "poolside/laguna-s-2.1:free",
-    "google/gemma-4-31b-it:free"
+    "dots-studio/dots-3-note-preview:free",
+    "recursive/flint-v1.0:free"
   ],
   "resume": "resume.pdf"
 }
